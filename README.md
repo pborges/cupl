@@ -19,13 +19,20 @@ Working MVP:
 - Generates JEDEC with checksums
 - Golden tests against provided samples
 
-## Goals
+## Limitations
 
-- Parse WinCUPL-compatible `.pld` source
-- Generate JEDEC `.jed` output
-- Support common PAL/GAL device families
-- Provide clear errors and diagnostics
-- Keep dependencies minimal (prefer Go standard library)
+- Not full WinCUPL parity yet
+- Focused on logic equations used in the sample designs
+- Limited device support (GAL16V8/22V10 variants only)
+
+## Features
+
+- WinCUPL-style `.pld` input to JEDEC `.jed` output
+- Deterministic JEDEC generation with checksums
+- Device support: `g16v8`, `g22v10`
+- Batch-friendly CLI (`build`, `devices`, `version`)
+- Golden tests against real-world PLD/JED examples
+- Small, dependency-light Go codebase
 
 ## Non-goals (initially)
 
@@ -78,46 +85,6 @@ Example PLD/JED files courtesy of `https://digicoolthings.com/`.
 - `examples/MECB_CHIPSELECT_PROTOTYPE_PLD_22V10_IO_0xE0-0xFF.jed` (expected output)
 - `examples/MECB_CHIPSELECT_PROTOTYPE_PLD_22V10_0xA000-0xAFFF.PLD` (input)
 - `examples/MECB_CHIPSELECT_PROTOTYPE_PLD_22V10_0xA000-0xAFFF.jed` (expected output)
-
-## Roadmap (Concrete)
-
-Phase 0: Project scaffolding
-
-- Define CLI shape and subcommands (done)
-- Add `cmd/cupl` entrypoint (done)
-- Decide minimal file layout for parser, device models, and JEDEC writer (done)
-
-Phase 1: Parsing (subset) (done)
-
-- Implement lexer for CUPL tokens used in the sample PLD (done)
-- Parse `Device`, `Pin`, and logic equations into an AST (done)
-
-Phase 2: Semantics (done for current subset)
-
-- DNF expansion and range handling (done)
-- Resolve pin names, input/output types, and default polarity (done)
-
-Phase 3: Device + Fuse Map (done for 16V8/22V10)
-
-- Add GAL16V8 and GAL22V10 device definitions (done)
-- Map product terms to fuse locations (done)
-
-Phase 4: JEDEC Output (done)
-
-- Implement JEDEC writer (header, fuse data, checksums) (done)
-- Golden test: compile sample PLD and compare to sample JED (done)
-
-Phase 5: CLI + UX (done)
-
-- `cupl build <file.pld> -o <file.jed>` (done)
-- `cupl devices` (done)
-- `cupl version` (done)
-
-Phase 6: Expand Coverage
-
-- Add more CUPL constructs as needed (e.g., `FIELD`, `TABLE`)
-- Add more device types (GAL20V8, GAL22V10, etc.)
-- Add additional golden tests
 
 ## License
 
