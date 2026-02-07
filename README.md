@@ -13,7 +13,7 @@ WinCUPL is Windows-only and long out of date. This project aims to provide a mod
 Working MVP:
 
 - Parses a practical CUPL subset
-- Supports `g16v8as` and `g22v10`
+- Supports `g16v8` and `g22v10`
 - Generates JEDEC with checksums
 - Golden tests against provided samples
 
