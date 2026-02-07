@@ -1,0 +1,25 @@
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go test binaries
+*.test
+
+# Go coverage output
+*.out
+
+# Go workspace files
+*.work
+
+# IDE/editor
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+
+# Project-specific
+ref/
