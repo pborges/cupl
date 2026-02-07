@@ -1,5 +1,7 @@
 # cupl
 
+**WARNING** Built with AI assistance, may or may not work at all
+
 A minimal, cross-platform CLI to compile WinCUPL `.pld` files into JEDEC (`.jed`) programming files for PAL/GAL devices.
 
 WinCUPL is Windows-only and long out of date. This project aims to provide a modern replacement focused on:
