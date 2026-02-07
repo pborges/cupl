@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [1.3.0] - 2026-02-07
+### Changed
+- JED headers now preserve the normalized device name (e.g., `g22v10`) instead of mapping to minipro device strings.
+
+### Known Issues
+Golden tests still report mismatches or missing fixtures for some 22V10 examples; these need regeneration or updated baselines:
+- `22V10_6502_16io`: fuse mismatch at 2212.
+- `22V10_Addr_Complex`: missing `examples/addr_complex.jed`.
+- `22V10_Addr_Small`: missing `examples/addr_small.jed`.
+- `22V10_Addr_Isolate`: fuse mismatch at 2204.
+
 ## [1.2.0] - 2026-02-07
 ### Added
 - `-v` flag to print the embedded VERSION at runtime.

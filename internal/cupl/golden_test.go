@@ -49,10 +49,35 @@ func TestGoldenExamples(t *testing.T) {
 			pldPath: "MECB_CHIPSELECT_PROTOTYPE_PLD_22V10.PLD",
 			jedPath: "MECB_CHIPSELECT_PROTOTYPE_PLD_22V10.jed",
 		},
-		{
+	{
 			name:    "22V10_Memory",
 			pldPath: "MECB_CHIPSELECT_PROTOTYPE_PLD_22V10_0xA000-0xAFFF.PLD",
 			jedPath: "MECB_CHIPSELECT_PROTOTYPE_PLD_22V10_0xA000-0xAFFF.jed",
+		},
+		{
+			name:    "22V10_6502_16io",
+			pldPath: "6502_16io_PLD_22V10.pld",
+			jedPath: "6502_16io_PLD_22V10.jed",
+		},
+		{
+			name:    "22V10_Addr_Complex",
+			pldPath: "addr_complex.pld",
+			jedPath: "addr_complex.jed",
+		},
+		{
+			name:    "22V10_Addr_Small",
+			pldPath: "addr_small.pld",
+			jedPath: "addr_small.jed",
+		},
+		{
+			name:    "22V10_Addr_Isolate",
+			pldPath: "addr_isolate.pld",
+			jedPath: "addr_isolate.jed",
+		},
+		{
+			name:    "JCODEC",
+			pldPath: "JCODEC.pld",
+			jedPath: "JCODEC.jed",
 		},
 	}
 

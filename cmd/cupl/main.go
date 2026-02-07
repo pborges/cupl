@@ -291,9 +291,5 @@ func headerLines(c cupllang.Content, chip gal.Chip) []string {
 }
 
 func headerDeviceName(chip gal.Chip) string {
-	base := strings.ToLower(strings.TrimPrefix(chip.Name(), "GAL"))
-	if mapped, ok := mapJedDeviceToMinipro(base); ok {
-		return mapped
-	}
-	return base
+	return strings.ToLower(strings.TrimPrefix(chip.Name(), "GAL"))
 }
