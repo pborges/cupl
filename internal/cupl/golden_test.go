@@ -3,7 +3,7 @@ package cupl
 import (
 	"testing"
 
-	examplesdata "github.com/pborges/cupl"
+	"github.com/pborges/cupl/examples"
 	"github.com/pborges/cupl/internal/jed"
 	"github.com/pborges/cupl/internal/testutil"
 )
@@ -16,43 +16,43 @@ func TestGoldenExamples(t *testing.T) {
 	}{
 		{
 			name:    "16V8_56K_8K",
-			pldPath: "examples/MECB_ChipSelect_6502_CPU_16V8_56K_RAM_8K_ROM.PLD",
-			jedPath: "examples/MECB_ChipSelect_6502_CPU_16V8_56K_RAM_8K_ROM.jed",
+			pldPath: "MECB_ChipSelect_6502_CPU_16V8_56K_RAM_8K_ROM.PLD",
+			jedPath: "MECB_ChipSelect_6502_CPU_16V8_56K_RAM_8K_ROM.jed",
 		},
 		{
 			name:    "16V8_48K_16K",
-			pldPath: "examples/MECB_ChipSelect_6502_CPU_16V8_48K_RAM_16K_ROM.PLD",
-			jedPath: "examples/MECB_ChipSelect_6502_CPU_16V8_48K_RAM_16K_ROM.jed",
+			pldPath: "MECB_ChipSelect_6502_CPU_16V8_48K_RAM_16K_ROM.PLD",
+			jedPath: "MECB_ChipSelect_6502_CPU_16V8_48K_RAM_16K_ROM.jed",
 		},
 		{
 			name:    "16V8_32K_32K",
-			pldPath: "examples/MECB_ChipSelect_6502_CPU_16V8_32K_RAM_32K_ROM.PLD",
-			jedPath: "examples/MECB_ChipSelect_6502_CPU_16V8_32K_RAM_32K_ROM.jed",
+			pldPath: "MECB_ChipSelect_6502_CPU_16V8_32K_RAM_32K_ROM.PLD",
+			jedPath: "MECB_ChipSelect_6502_CPU_16V8_32K_RAM_32K_ROM.jed",
 		},
 		{
 			name:    "16V8_CreatiVision_Onboard",
-			pldPath: "examples/MECB_ChipSelect_6502_CPU_16V8_CreatiVision_4K_RAM_32K_ROM_onboard.PLD",
-			jedPath: "examples/MECB_ChipSelect_6502_CPU_16V8_CreatiVision_4K_RAM_32K_ROM_onboard.jed",
+			pldPath: "MECB_ChipSelect_6502_CPU_16V8_CreatiVision_4K_RAM_32K_ROM_onboard.PLD",
+			jedPath: "MECB_ChipSelect_6502_CPU_16V8_CreatiVision_4K_RAM_32K_ROM_onboard.jed",
 		},
 		{
 			name:    "16V8_CreatiVision_Expansion",
-			pldPath: "examples/MECB_ChipSelect_6502_CPU_16V8_CreatiVision_4K_RAM_Expansion_ROM.PLD",
-			jedPath: "examples/MECB_ChipSelect_6502_CPU_16V8_CreatiVision_4K_RAM_Expansion_ROM.jed",
+			pldPath: "MECB_ChipSelect_6502_CPU_16V8_CreatiVision_4K_RAM_Expansion_ROM.PLD",
+			jedPath: "MECB_ChipSelect_6502_CPU_16V8_CreatiVision_4K_RAM_Expansion_ROM.jed",
 		},
 		{
 			name:    "22V10_IO",
-			pldPath: "examples/MECB_CHIPSELECT_PROTOTYPE_PLD_22V10_IO_0xE0-0xFF.PLD",
-			jedPath: "examples/MECB_CHIPSELECT_PROTOTYPE_PLD_22V10_IO_0xE0-0xFF.jed",
+			pldPath: "MECB_CHIPSELECT_PROTOTYPE_PLD_22V10_IO_0xE0-0xFF.PLD",
+			jedPath: "MECB_CHIPSELECT_PROTOTYPE_PLD_22V10_IO_0xE0-0xFF.jed",
 		},
 		{
 			name:    "22V10_IO_Minimal",
-			pldPath: "examples/MECB_CHIPSELECT_PROTOTYPE_PLD_22V10.PLD",
-			jedPath: "examples/MECB_CHIPSELECT_PROTOTYPE_PLD_22V10.jed",
+			pldPath: "MECB_CHIPSELECT_PROTOTYPE_PLD_22V10.PLD",
+			jedPath: "MECB_CHIPSELECT_PROTOTYPE_PLD_22V10.jed",
 		},
 		{
 			name:    "22V10_Memory",
-			pldPath: "examples/MECB_CHIPSELECT_PROTOTYPE_PLD_22V10_0xA000-0xAFFF.PLD",
-			jedPath: "examples/MECB_CHIPSELECT_PROTOTYPE_PLD_22V10_0xA000-0xAFFF.jed",
+			pldPath: "MECB_CHIPSELECT_PROTOTYPE_PLD_22V10_0xA000-0xAFFF.PLD",
+			jedPath: "MECB_CHIPSELECT_PROTOTYPE_PLD_22V10_0xA000-0xAFFF.jed",
 		},
 	}
 
@@ -97,7 +97,7 @@ func compareJEDEC(t *testing.T, gotJed string, expected []byte) {
 }
 
 func mustRead(t *testing.T, path string) []byte {
-	b, err := examplesdata.FS.ReadFile(path)
+	b, err := examples.FS.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read %s: %v", path, err)
 	}

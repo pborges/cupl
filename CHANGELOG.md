@@ -1,8 +1,15 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
-
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
+
+## [1.2.0] - 2026-02-07
+### Added
+- `-v` flag to print the embedded VERSION at runtime.
+- `burn` now accepts `.pld` inputs, builds a temporary `.jed`, then burns it.
+
+### Changed
+- Embedded example fixtures moved to `examples/` for package layout cleanup.
 
 ## [1.1.0] - 2026-02-07
 ### Added

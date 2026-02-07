@@ -10,12 +10,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pborges/cupl/internal/cupl"
+	cuplroot "github.com/pborges/cupl"
+	cupllang "github.com/pborges/cupl/internal/cupl"
 	"github.com/pborges/cupl/internal/gal"
 	"github.com/pborges/cupl/internal/jed"
 )
-
-const version = "1.1.0"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -24,6 +23,8 @@ func main() {
 	}
 
 	switch os.Args[1] {
+	case "-v":
+		fmt.Println(cuplroot.Version())
 	case "build":
 		if err := cmdBuild(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
@@ -33,7 +34,7 @@ func main() {
 		fmt.Println("g16v8as")
 		fmt.Println("g22v10")
 	case "version":
-		fmt.Println(version)
+		fmt.Println(cuplroot.Version())
 	case "burn":
 		if err := cmdBurn(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
@@ -53,9 +54,10 @@ func usage() {
 	fmt.Println()
 	fmt.Println("Usage:")
 	fmt.Println("  cupl build <file.pld> -o <file.jed>")
-	fmt.Println("  cupl burn <file.jed>")
+	fmt.Println("  cupl burn <file.jed|file.pld>")
 	fmt.Println("  cupl devices")
 	fmt.Println("  cupl version")
+	fmt.Println("  cupl -v")
 }
 
 func cmdBuild(args []string) error {
@@ -71,11 +73,11 @@ func cmdBuild(args []string) error {
 	if err != nil {
 		return err
 	}
-	content, err := cupl.Parse(data)
+	content, err := cupllang.Parse(data)
 	if err != nil {
 		return err
 	}
-	g, err := cupl.Compile(content)
+	g, err := cupllang.Compile(content)
 	if err != nil {
 		return err
 	}
@@ -83,11 +85,7 @@ func cmdBuild(args []string) error {
 		base := strings.TrimSuffix(inPath, filepath.Ext(inPath))
 		outPath = base + ".jed"
 	}
-	jedText := jed.MakeJEDEC(jed.Config{
-		SecurityBit: false,
-		Header:      headerLines(content, g.Chip),
-	}, g)
-	return ioutil.WriteFile(outPath, []byte(jedText), 0644)
+	return buildJedFromContent(content, g, outPath)
 }
 
 func parseBuildArgs(args []string) (string, []string, error) {
@@ -124,16 +122,57 @@ func parseBuildArgs(args []string) (string, []string, error) {
 	return *outPath, rest, nil
 }
 
+func buildJed(inPath, outPath string) error {
+	data, err := ioutil.ReadFile(inPath)
+	if err != nil {
+		return err
+	}
+	content, err := cupllang.Parse(data)
+	if err != nil {
+		return err
+	}
+	g, err := cupllang.Compile(content)
+	if err != nil {
+		return err
+	}
+	return buildJedFromContent(content, g, outPath)
+}
+
+func buildJedFromContent(content cupllang.Content, g *gal.GAL, outPath string) error {
+	jedText := jed.MakeJEDEC(jed.Config{
+		SecurityBit: false,
+		Header:      headerLines(content, g.Chip),
+	}, g)
+	return ioutil.WriteFile(outPath, []byte(jedText), 0644)
+}
+
 func cmdBurn(args []string) error {
 	deviceOverride, rest, err := parseBurnArgs(args)
 	if err != nil {
 		return err
 	}
 	if len(rest) != 1 {
-		return errors.New("burn requires a single .jed input")
+		return errors.New("burn requires a single .jed or .pld input")
 	}
 	inPath := rest[0]
-	data, err := ioutil.ReadFile(inPath)
+	ext := strings.ToLower(filepath.Ext(inPath))
+	jedPath := inPath
+	tempDir := ""
+	if ext == ".pld" {
+		tempDir, err = os.MkdirTemp("", "cupl-burn-*")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(tempDir)
+		base := strings.TrimSuffix(filepath.Base(inPath), filepath.Ext(inPath))
+		jedPath = filepath.Join(tempDir, base+".jed")
+		if err := buildJed(inPath, jedPath); err != nil {
+			return err
+		}
+	} else if ext != ".jed" {
+		return errors.New("burn requires a .jed or .pld input")
+	}
+	data, err := ioutil.ReadFile(jedPath)
 	if err != nil {
 		return err
 	}
@@ -149,7 +188,7 @@ func cmdBurn(args []string) error {
 		}
 		device = mapped
 	}
-	cmd := exec.Command("minipro", "-p", device, "-w", inPath)
+	cmd := exec.Command("minipro", "-p", device, "-w", jedPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -237,9 +276,9 @@ func mapJedDeviceToMinipro(device string) (string, bool) {
 	return "", false
 }
 
-func headerLines(c cupl.Content, chip gal.Chip) []string {
+func headerLines(c cupllang.Content, chip gal.Chip) []string {
 	lines := []string{
-		fmt.Sprintf("CUPlang        %s", version),
+		fmt.Sprintf("CUPlang        %s", cuplroot.Version()),
 		fmt.Sprintf("Device          %s", headerDeviceName(chip)),
 	}
 	keys := []string{"Name", "Partno", "Revision", "Date", "Designer", "Company", "Assembly", "Location"}

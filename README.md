@@ -30,7 +30,7 @@ Working MVP:
 - WinCUPL-style `.pld` input to JEDEC `.jed` output
 - Deterministic JEDEC generation with checksums
 - Device support: `g16v8`, `g22v10`
-- Batch-friendly CLI (`build`, `burn`, `devices`, `version`)
+- Batch-friendly CLI (`build`, `burn`, `devices`, `version`, `-v`)
 - Golden tests against real-world PLD/JED examples
 - Small, dependency-light Go codebase
 
@@ -49,11 +49,17 @@ cupl build path/to/design.pld -o path/to/design.jed
 # Burn JEDEC to device with minipro (device auto-detected from JED header)
 cupl burn path/to/design.jed
 
+# Or burn directly from a PLD (builds a temp JED first)
+cupl burn path/to/design.pld
+
 # Override minipro device name
 cupl burn path/to/design.jed -p g16v8as
 
 # Show device info or list supported devices
 cupl devices
+
+# Show version
+cupl -v
 ```
 
 ## Build And Test
