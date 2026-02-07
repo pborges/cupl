@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -14,7 +15,7 @@ import (
 	"github.com/pborges/cupl/internal/jed"
 )
 
-const version = "0.1.0"
+const version = "1.1.0"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -33,6 +34,11 @@ func main() {
 		fmt.Println("g22v10")
 	case "version":
 		fmt.Println(version)
+	case "burn":
+		if err := cmdBurn(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
 	case "help", "-h", "--help":
 		usage()
 	default:
@@ -47,6 +53,7 @@ func usage() {
 	fmt.Println()
 	fmt.Println("Usage:")
 	fmt.Println("  cupl build <file.pld> -o <file.jed>")
+	fmt.Println("  cupl burn <file.jed>")
 	fmt.Println("  cupl devices")
 	fmt.Println("  cupl version")
 }
@@ -117,10 +124,123 @@ func parseBuildArgs(args []string) (string, []string, error) {
 	return *outPath, rest, nil
 }
 
+func cmdBurn(args []string) error {
+	deviceOverride, rest, err := parseBurnArgs(args)
+	if err != nil {
+		return err
+	}
+	if len(rest) != 1 {
+		return errors.New("burn requires a single .jed input")
+	}
+	inPath := rest[0]
+	data, err := ioutil.ReadFile(inPath)
+	if err != nil {
+		return err
+	}
+	device := deviceOverride
+	if device == "" {
+		jedDevice, err := jedDeviceFromFile(data)
+		if err != nil {
+			return err
+		}
+		mapped, ok := mapJedDeviceToMinipro(jedDevice)
+		if !ok {
+			return fmt.Errorf("unsupported JED device %q (use -p to override)", jedDevice)
+		}
+		device = mapped
+	}
+	cmd := exec.Command("minipro", "-p", device, "-w", inPath)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	return cmd.Run()
+}
+
+func parseBurnArgs(args []string) (string, []string, error) {
+	fs := flag.NewFlagSet("burn", flag.ContinueOnError)
+	device := fs.String("p", "", "minipro device name (override)")
+	rest := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "-p" || arg == "--p" || arg == "--device" {
+			if i+1 >= len(args) {
+				return "", nil, errors.New("missing value for -p")
+			}
+			if err := fs.Set("p", args[i+1]); err != nil {
+				return "", nil, err
+			}
+			i++
+			continue
+		}
+		if strings.HasPrefix(arg, "-p=") {
+			if err := fs.Set("p", strings.TrimPrefix(arg, "-p=")); err != nil {
+				return "", nil, err
+			}
+			continue
+		}
+		if strings.HasPrefix(arg, "--device=") {
+			if err := fs.Set("p", strings.TrimPrefix(arg, "--device=")); err != nil {
+				return "", nil, err
+			}
+			continue
+		}
+		if strings.HasPrefix(arg, "-") {
+			if err := fs.Parse([]string{arg}); err != nil {
+				return "", nil, err
+			}
+			continue
+		}
+		rest = append(rest, arg)
+	}
+	return *device, rest, nil
+}
+
+func jedDeviceFromFile(data []byte) (string, error) {
+	s := string(data)
+	s = strings.TrimPrefix(s, "\x02")
+	if idx := strings.Index(s, "\x03"); idx >= 0 {
+		s = s[:idx]
+	}
+	for _, line := range strings.Split(s, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "*") {
+			break
+		}
+		if strings.HasPrefix(line, "Device") {
+			v := strings.TrimSpace(strings.TrimPrefix(line, "Device"))
+			if v == "" {
+				return "", errors.New("JED device header is empty")
+			}
+			fields := strings.Fields(v)
+			if len(fields) == 0 {
+				return "", errors.New("JED device header is empty")
+			}
+			return fields[0], nil
+		}
+	}
+	return "", errors.New("JED device header not found")
+}
+
+func mapJedDeviceToMinipro(device string) (string, bool) {
+	d := strings.ToLower(strings.TrimSpace(device))
+	d = strings.TrimPrefix(d, "gal")
+	d = strings.TrimPrefix(d, "atf")
+	switch {
+	case d == "16v8" || d == "16v8a" || d == "16v8as" || d == "g16v8as":
+		return "g16v8as", true
+	case d == "22v10" || d == "22v10c" || d == "g22v10":
+		return "ATF22V10C", true
+	}
+	return "", false
+}
+
 func headerLines(c cupl.Content, chip gal.Chip) []string {
 	lines := []string{
 		fmt.Sprintf("CUPlang        %s", version),
-		fmt.Sprintf("Device          %s", strings.ToLower(strings.TrimPrefix(chip.Name(), "GAL"))),
+		fmt.Sprintf("Device          %s", headerDeviceName(chip)),
 	}
 	keys := []string{"Name", "Partno", "Revision", "Date", "Designer", "Company", "Assembly", "Location"}
 	for _, k := range keys {
@@ -129,4 +249,12 @@ func headerLines(c cupl.Content, chip gal.Chip) []string {
 		}
 	}
 	return lines
+}
+
+func headerDeviceName(chip gal.Chip) string {
+	base := strings.ToLower(strings.TrimPrefix(chip.Name(), "GAL"))
+	if mapped, ok := mapJedDeviceToMinipro(base); ok {
+		return mapped
+	}
+	return base
 }

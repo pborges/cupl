@@ -1,6 +1,6 @@
 
 CUPlang        0.1.0
-Device          22v10
+Device          ATF22V10C
 Name            MECB_CHIPSELECT_PROTOTYPE_PLD_22V10
 Partno          U1
 Revision        01
@@ -24,4 +24,4 @@ Location        None
 *L05828 0101010100110001000000000000000000000000000000000000000000000000
 *C2c22
 *
-a73a
+a838
