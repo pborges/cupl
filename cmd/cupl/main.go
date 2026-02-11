@@ -178,15 +178,10 @@ func cmdBurn(args []string) error {
 	}
 	device := deviceOverride
 	if device == "" {
-		jedDevice, err := jedDeviceFromFile(data)
+		device, err = jedDeviceFromFile(data)
 		if err != nil {
 			return err
 		}
-		mapped, ok := mapJedDeviceToMinipro(jedDevice)
-		if !ok {
-			return fmt.Errorf("unsupported JED device %q (use -p to override)", jedDevice)
-		}
-		device = mapped
 	}
 	cmd := exec.Command("minipro", "-p", device, "-w", jedPath)
 	cmd.Stdout = os.Stdout
@@ -263,19 +258,6 @@ func jedDeviceFromFile(data []byte) (string, error) {
 	return "", errors.New("JED device header not found")
 }
 
-// TODO re-evaulate the need for this method
-func mapJedDeviceToMinipro(device string) (string, bool) {
-	d := strings.ToLower(strings.TrimSpace(device))
-	d = strings.TrimPrefix(d, "gal")
-	d = strings.TrimPrefix(d, "atf")
-	switch {
-	case d == "16v8" || d == "16v8a" || d == "16v8as" || d == "g16v8as":
-		return "g16v8as", true
-	case d == "22v10" || d == "22v10c" || d == "g22v10":
-		return "ATF22V10C", true
-	}
-	return "", false
-}
 
 func headerLines(c cupllang.Content, chip gal.Chip) []string {
 	lines := []string{

@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [1.4.1] - 2026-02-10
+### Removed
+- Removed device name mapping in `burn` command; the JED header device name is now passed directly to minipro.
+
 ## [1.4.0] - 2026-02-10
 ### Changed
 - All example PLD files now compile and pass tests.
