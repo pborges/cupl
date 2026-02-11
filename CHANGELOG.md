@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [1.4.0] - 2026-02-10
+### Changed
+- All example PLD files now compile and pass tests.
+- Committed to Quine-McCluskey as the sole minimization algorithm for product terms.
+- Renamed example files from digicoolthings.com for brevity (e.g., `MECB_32K_RAM_32K_ROM`).
+- Regenerated all `.jed` fixtures using Quine-McCluskey minimization.
+- Updated README to reflect blackbox testing methodology.
+
 ## [1.3.0] - 2026-02-07
 ### Changed
 - JED headers now preserve the normalized device name (e.g., `g22v10`) instead of mapping to minipro device strings.
