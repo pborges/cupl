@@ -1,0 +1,31 @@
+Name            _nested_expr;
+Partno          TEST012;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/* Test: Deeply nested parenthesized expressions */
+
+Pin 2 = A;
+Pin 3 = B;
+Pin 4 = C;
+Pin 5 = D;
+Pin 6 = E;
+Pin 7 = F;
+
+Pin 12 = Y0;
+Pin 13 = Y1;
+Pin 14 = Y2;
+
+/* nested AND-OR */
+Y0 = (A & B) # (C & D) # (E & F);
+
+/* nested OR-AND */
+Y1 = (A # B) & (C # D) & (E # F);
+
+/* deep nesting with mixed ops */
+Y2 = ((A & B) # C) & ((D # E) & !F);

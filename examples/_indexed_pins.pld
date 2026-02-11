@@ -1,0 +1,19 @@
+Name            _indexed_pins;
+Partno          TEST009;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/* Test: Indexed variable pin declarations and list notation */
+
+Pin [2..5] = [A0..3];
+Pin [6..9] = [B0..3];
+
+Pin [12..15] = [Y0..3];
+
+/* bitwise AND of two buses using list assignment */
+[Y0..3] = [A0..3] & [B0..3];

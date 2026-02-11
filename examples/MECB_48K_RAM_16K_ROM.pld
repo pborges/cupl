@@ -1,4 +1,4 @@
-Name            MECB_ChipSelect_6502_CPU;
+Name            MECB_48K_RAM_16K_ROM;
 Partno          CA0001;
 Revision        01;
 Date            11/2024;
@@ -137,11 +137,10 @@ cs_spare = ioaddr & clk;
  * cs_spare : Unused, but assigned to replicate ecb_iorq.
  *
  */
-/*
 cs_rom = ecb_mreq & a15 & a14;
 cs_ram = ecb_mreq & !(a15 & a14);
 cs_spare = ioaddr & clk;
-*/
+
 
 /*
  *
@@ -168,10 +167,11 @@ cs_spare = ioaddr & clk;
  *
  * NOTE: We don't utilise ecb_mreq as we are not reserving ioaddr space.
  */
+/*
 cs_rom = clk & a15;
 cs_ram = clk & !a15 & !a14 & !a13 & !a12 & !a11 & ! a10;
 cs_spare = ioaddr & clk;
-
+*/
 
 /*
  *

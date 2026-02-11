@@ -1,0 +1,35 @@
+Name            _dont_care_equality;
+Partno          TEST008;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/* Test: Don't care (X) in equality operations */
+
+Pin 2 = A0;
+Pin 3 = A1;
+Pin 4 = A2;
+Pin 5 = A3;
+Pin 6 = A4;
+Pin 7 = A5;
+Pin 8 = A6;
+Pin 9 = A7;
+
+Pin 12 = Y0;
+Pin 13 = Y1;
+Pin 14 = Y2;
+
+FIELD byte = [A7..0];
+
+/* upper nibble is F, lower nibble is don't care */
+Y0 = byte:'h'FX;
+
+/* match 101X_XX00 in binary */
+Y1 = byte:'b'101XXX00;
+
+/* match hex X5 (upper nibble don't care) */
+Y2 = byte:'h'X5;

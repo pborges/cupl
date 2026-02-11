@@ -1,0 +1,37 @@
+Name            _equality_ops;
+Partno          TEST004;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/* Test: Equality operations (FIELD:constant) */
+
+Pin 2 = A0;
+Pin 3 = A1;
+Pin 4 = A2;
+Pin 5 = A3;
+
+Pin 12 = Y0;
+Pin 13 = Y1;
+Pin 14 = Y2;
+Pin 15 = Y3;
+Pin 16 = Y4;
+Pin 17 = Y5;
+
+FIELD addr = [A3..0];
+
+/* decode specific hex values */
+Y0 = addr:'h'0;
+Y1 = addr:'h'5;
+Y2 = addr:'h'A;
+Y3 = addr:'h'F;
+
+/* decode with binary constant */
+Y4 = addr:'b'1100;
+
+/* decode with decimal constant */
+Y5 = addr:'d'7;

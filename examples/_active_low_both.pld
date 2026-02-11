@@ -1,0 +1,27 @@
+Name            _active_low_both;
+Partno          TEST011;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/* Test: Active-low on both input and output pins, complement on LHS */
+
+Pin 2  = !nCS;
+Pin 3  = !nWR;
+Pin 4  = !nRD;
+Pin 5  = A0;
+
+Pin 12 = !nRAM;
+Pin 13 = !nROM;
+Pin 14 = Y0;
+
+/* active-low inputs used in positive logic */
+nRAM = nCS & !A0;
+nROM = nCS & A0;
+
+/* complement on LHS: !Y0 = expr means Y0 gets the inverted result */
+!Y0 = nCS & nWR;

@@ -1,0 +1,33 @@
+Name     6502PLD ;
+PartNo   00 ;
+Date     11/26/2021 ;
+Revision 01 ;
+Designer tmrob ;
+Company   ;
+Assembly  ;
+Location  ;
+Device   g22V10 ;
+
+/* Input */
+Pin 1        = CLK;
+Pin [3..11]  = [A15..A7];
+
+/* Output */
+Pin 19 = RAM_CS;
+Pin 20 = ROM_CS;
+Pin 21 = IO_CS1;
+Pin 22 = IO_CS2;
+
+/* Local Variables */
+FIELD Address = [A15..A7];
+
+/* Logic */
+RAM       = Address:[0000..7EFF];
+IO1       = Address:[7F00..7F7F];
+IO2       = Address:[7F80..7FFF];
+ROM       = Address:[8000..FFFF];
+
+!RAM_CS   = RAM & CLK;
+!ROM_CS   = ROM;
+!IO_CS1   = IO1;
+!IO_CS2   = IO2;

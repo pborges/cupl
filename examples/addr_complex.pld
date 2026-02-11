@@ -1,0 +1,37 @@
+Name addr_complex;
+PartNo 000000;
+Device g22v10;
+
+Pin 1 = A15;
+Pin 2 = A14;
+Pin 3 = A13;
+Pin 4 = A12;
+Pin 5 = A11;
+Pin 6 = A10;
+Pin 7 = A9;
+Pin 8 = A8;
+Pin 9 = A7;
+Pin 11 = CLK;
+
+Pin 19 = OUT0;
+Pin 18 = OUT1;
+Pin 17 = OUT2;
+Pin 16 = OUT3;
+Pin 15 = OUT4;
+Pin 14 = OUT5;
+
+FIELD Addr = [A15..A7];
+
+RANGE0 = Addr:[0000..00FE];
+RANGE1 = Addr:[0000..00FF];
+RANGE2 = Addr:[0000..00F7];
+RANGE3 = Addr:[0100..01FF];
+RANGE4 = Addr:[0200..02F7];
+RANGE5 = Addr:[7E00..7EFF];
+
+OUT0 = RANGE0;
+OUT1 = RANGE1;
+OUT2 = RANGE2;
+OUT3 = RANGE3;
+OUT4 = RANGE4;
+OUT5 = RANGE5;

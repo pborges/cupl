@@ -1,0 +1,31 @@
+Name            _reduction_ops;
+Partno          TEST006;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/* Test: Reduction operators :& :# :$ */
+
+Pin 2 = A0;
+Pin 3 = A1;
+Pin 4 = A2;
+Pin 5 = A3;
+
+Pin 12 = Y0;
+Pin 13 = Y1;
+Pin 14 = Y2;
+
+FIELD nibble = [A3..0];
+
+/* reduction AND: true when all bits are 1 */
+Y0 = [A3..0]:&;
+
+/* reduction OR: true when any bit is 1 */
+Y1 = [A3..0]:#;
+
+/* reduction XOR: parity of the 4 bits */
+Y2 = [A3..0]:$;

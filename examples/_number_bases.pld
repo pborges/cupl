@@ -1,0 +1,43 @@
+Name            _number_bases;
+Partno          TEST007;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g22v10;
+
+/* Test: Number bases in equality operations: hex, binary, octal, decimal */
+
+Pin 2 = A0;
+Pin 3 = A1;
+Pin 4 = A2;
+Pin 5 = A3;
+Pin 6 = A4;
+Pin 7 = A5;
+Pin 8 = A6;
+Pin 9 = A7;
+
+Pin 23 = Y0;
+Pin 22 = Y1;
+Pin 21 = Y2;
+Pin 20 = Y3;
+Pin 19 = Y4;
+
+FIELD byte = [A7..0];
+
+/* hex */
+Y0 = byte:'h'FF;
+
+/* binary */
+Y1 = byte:'b'10101010;
+
+/* octal */
+Y2 = byte:'O'377;
+
+/* decimal */
+Y3 = byte:'d'100;
+
+/* default (hex) */
+Y4 = byte:55;

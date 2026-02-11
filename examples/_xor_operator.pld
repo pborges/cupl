@@ -1,0 +1,33 @@
+Name            _xor_operator;
+Partno          TEST001;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/* Test: XOR ($) operator */
+
+Pin 2 = A;
+Pin 3 = B;
+Pin 4 = C;
+Pin 5 = D;
+
+Pin 12 = Y0;
+Pin 13 = Y1;
+Pin 14 = Y2;
+Pin 15 = Y3;
+
+/* simple two-input XOR */
+Y0 = A $ B;
+
+/* XOR combined with AND */
+Y1 = (A $ B) & C;
+
+/* XOR combined with OR */
+Y2 = (A $ B) # (C $ D);
+
+/* chained XOR (parity) */
+Y3 = A $ B $ C $ D;

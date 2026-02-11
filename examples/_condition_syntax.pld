@@ -1,0 +1,27 @@
+Name            _condition_syntax;
+Partno          TEST013;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/* Test: CONDITION syntax for priority-encoded output */
+
+Pin 2 = A;
+Pin 3 = B;
+Pin 4 = C;
+Pin 5 = D;
+
+Pin 12 = Y0;
+Pin 13 = Y1;
+Pin 14 = Y2;
+
+CONDITION {
+  IF A & B  OUT Y0;
+  IF C & !D OUT Y1;
+  IF !A & D OUT Y2;
+  DEFAULT   OUT Y2;
+}

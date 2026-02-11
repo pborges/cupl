@@ -2,5 +2,5 @@ package examples
 
 import "embed"
 
-//go:embed *.PLD *.jed
+//go:embed *.pld *.jed
 var FS embed.FS

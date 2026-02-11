@@ -1,0 +1,33 @@
+Name            _set_and_or;
+Partno          TEST005;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/* Test: Set operations between bit fields and constants */
+
+Pin 2 = A0;
+Pin 3 = A1;
+Pin 4 = A2;
+Pin 5 = A3;
+
+Pin 6 = B0;
+Pin 7 = B1;
+Pin 8 = B2;
+Pin 9 = B3;
+
+Pin 12 = Y0;
+Pin 13 = Y1;
+Pin 14 = Y2;
+Pin 15 = Y3;
+
+FIELD inA = [A3..0];
+FIELD inB = [B3..0];
+FIELD outY = [Y3..0];
+
+/* AND a set with a single variable: each output bit ANDed with B0 */
+outY = inA & B0;

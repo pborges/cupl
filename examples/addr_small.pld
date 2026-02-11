@@ -1,0 +1,26 @@
+Name addr_small;
+PartNo xxxxxx;
+Device g22v10;
+
+Pin 1 = A7;
+Pin 2 = A6;
+Pin 3 = A5;
+Pin 4 = A4;
+Pin 5 = A3;
+Pin 6 = A2;
+Pin 7 = A1;
+Pin 8 = A0;
+
+Pin 14 = OUT0;
+Pin 15 = OUT1;
+Pin 16 = OUT2;
+
+FIELD Addr = [A7..A0];
+
+RANGE0 = Addr:[00..0F];
+RANGE1 = Addr:[10..1F];
+RANGE2 = Addr:[20..2F];
+
+OUT0 = RANGE0;
+OUT1 = RANGE1;
+OUT2 = RANGE2;

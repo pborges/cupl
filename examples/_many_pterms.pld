@@ -1,0 +1,47 @@
+Name            _many_pterms;
+Partno          TEST015;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g22v10;
+
+/* Test: Output with many product terms (uses 22V10 high-term pins) */
+
+Pin 1  = A;
+Pin 2  = B;
+Pin 3  = C;
+Pin 4  = D;
+Pin 5  = E;
+Pin 6  = F;
+Pin 7  = G;
+Pin 8  = H;
+
+Pin 18 = Y0;
+Pin 19 = Y1;
+
+/* Y0: 8 product terms (one for each minterm with A=1) */
+Y0 = A & !B & !C
+   # A &  B & !C
+   # A & !B &  C
+   # A &  B &  C
+   # A & !D & !E
+   # A &  D & !E
+   # A & !D &  E
+   # A &  D &  E;
+
+/* Y1: many product terms - all 3-input AND combos */
+Y1 = !A & !B & !C & D
+   #  A & !B & !C & D
+   # !A &  B & !C & D
+   #  A &  B & !C & D
+   # !A & !B &  C & D
+   #  A & !B &  C & D
+   # !A &  B &  C & D
+   #  A &  B &  C & D
+   # E & F & !G
+   # E & !F & G
+   # !E & F & G
+   # E & F & G;

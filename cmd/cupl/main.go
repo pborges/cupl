@@ -263,6 +263,7 @@ func jedDeviceFromFile(data []byte) (string, error) {
 	return "", errors.New("JED device header not found")
 }
 
+// TODO re-evaulate the need for this method
 func mapJedDeviceToMinipro(device string) (string, bool) {
 	d := strings.ToLower(strings.TrimSpace(device))
 	d = strings.TrimPrefix(d, "gal")

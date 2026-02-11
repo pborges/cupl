@@ -1,0 +1,44 @@
+Name            _truth_table;
+Partno          TEST003;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/* Test: TABLE (truth table) syntax */
+
+Pin 2 = in0;
+Pin 3 = in1;
+Pin 4 = in2;
+Pin 5 = in3;
+
+Pin 12 = out0;
+Pin 13 = out1;
+Pin 14 = out2;
+Pin 15 = out3;
+
+FIELD input = [in3..0];
+FIELD output = [out3..0];
+
+/* 4-bit Gray code encoder */
+TABLE input => output {
+  'b'0000 => 'b'0000;
+  'b'0001 => 'b'0001;
+  'b'0010 => 'b'0011;
+  'b'0011 => 'b'0010;
+  'b'0100 => 'b'0110;
+  'b'0101 => 'b'0111;
+  'b'0110 => 'b'0101;
+  'b'0111 => 'b'0100;
+  'b'1000 => 'b'1100;
+  'b'1001 => 'b'1101;
+  'b'1010 => 'b'1111;
+  'b'1011 => 'b'1110;
+  'b'1100 => 'b'1010;
+  'b'1101 => 'b'1011;
+  'b'1110 => 'b'1001;
+  'b'1111 => 'b'1000;
+}

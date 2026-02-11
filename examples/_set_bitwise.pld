@@ -1,0 +1,28 @@
+Name            _set_bitwise;
+Partno          TEST018;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/* Test: Bitwise set operations between two fields */
+
+Pin [2..5]  = [A0..3];
+Pin [6..9]  = [B0..3];
+
+Pin [12..15] = [Y0..3];
+Pin [16..19] = [Z0..3];
+
+FIELD inA = [A3..0];
+FIELD inB = [B3..0];
+FIELD outY = [Y3..0];
+FIELD outZ = [Z3..0];
+
+/* bitwise OR of two 4-bit buses */
+outY = inA # inB;
+
+/* bitwise XOR of two 4-bit buses */
+outZ = inA $ inB;

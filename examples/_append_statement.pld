@@ -1,0 +1,30 @@
+Name            _append_statement;
+Partno          TEST002;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/* Test: APPEND keyword - multiple expressions ORed to same output */
+
+Pin 2 = A;
+Pin 3 = B;
+Pin 4 = C;
+Pin 5 = D;
+Pin 6 = E;
+Pin 7 = F;
+
+Pin 12 = Y0;
+Pin 13 = Y1;
+
+/* Y0 built up with APPEND */
+Y0 = A & B;
+APPEND Y0 = C & D;
+APPEND Y0 = E & F;
+
+/* Y1: single APPEND after initial */
+Y1 = A & !B;
+APPEND Y1 = !A & B;

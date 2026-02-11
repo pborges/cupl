@@ -1,4 +1,4 @@
-Name            MECB_CHIPSELECT_PROTOTYPE_PLD_22V10;
+Name            MECB_P_22V10;
 Partno          U1;
 Date            05/2025;
 Revision        01;
@@ -60,10 +60,10 @@ Pin 17 = !cs3;
  *
  */
 
-cs0 = mreq & mem_addr:[A000..A3FF];
-cs1 = mreq & mem_addr:[A400..A7FF];
-cs2 = mreq & mem_addr:[A800..ABFF];
-cs3 = mreq & mem_addr:[AC00..AFFF];
+cs0 = iorq & io_addr:[E0..E7];
+cs1 = iorq & io_addr:[E8..EF];
+cs2 = iorq & io_addr:[F0..F7];
+cs3 = iorq & io_addr:[F8..FF];
 
 
 /*

@@ -1,0 +1,27 @@
+Name            _intermediate_vars;
+Partno          TEST010;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/* Test: Chained intermediate (non-pin) variables */
+
+Pin 2 = A;
+Pin 3 = B;
+Pin 4 = C;
+Pin 5 = D;
+
+Pin 12 = Y0;
+Pin 13 = Y1;
+
+/* intermediate variables */
+sel    = A & B;
+enable = C # D;
+mask   = sel & enable;
+
+Y0 = mask;
+Y1 = !mask;

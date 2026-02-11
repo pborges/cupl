@@ -36,19 +36,67 @@ func Compile(c Content) (*gal.GAL, error) {
 	symbols["VCC"] = Symbol{Pin: chip.NumPins(), ActiveLow: false}
 	symbols["GND"] = Symbol{Pin: chip.NumPins() / 2, ActiveLow: false}
 
-	type compiledEq struct {
-		eq    Equation
-		terms []Term
-	}
-	compiled := make([]compiledEq, 0, len(c.Equations))
+	// Desugar set/bus operations (field-name LHS) before processing
+	c.Equations = desugarSetOps(c)
+
+	aliases := make(map[string]Expr)
 	for _, eq := range c.Equations {
-		terms, err := exprToTerms(eq.Expr, c.Fields)
+		lhs, activeLow, err := parseEquationLHS(eq.LHS)
 		if err != nil {
 			return nil, fmt.Errorf("line %d: %w", eq.Line, err)
 		}
-		compiled = append(compiled, compiledEq{eq: eq, terms: terms})
+		if activeLow {
+			if _, ok := symbols[lhs]; !ok {
+				return nil, fmt.Errorf("line %d: active-low output %q is not a defined pin", eq.Line, lhs)
+			}
+		}
+		if _, ok := symbols[lhs]; !ok {
+			if !eq.Append {
+				aliases[lhs] = eq.Expr
+			}
+		}
+	}
+
+	type compiledEq struct {
+		eq         Equation
+		terms      []Term
+		activeLow  bool
+		outputName string
+	}
+	compiled := make([]compiledEq, 0, len(c.Equations))
+	for _, eq := range c.Equations {
+		lhs, activeLow, err := parseEquationLHS(eq.LHS)
+		if err != nil {
+			return nil, fmt.Errorf("line %d: %w", eq.Line, err)
+		}
+		if _, ok := symbols[lhs]; !ok {
+			// Non-output equation: treat as alias for expressions.
+			continue
+		}
+
+		// Polarity optimization: if the top-level expression is NOT, unwrap it
+		// and flip polarity (compile the inner expression with inverted XOR bit).
+		// This matches WinCUPL's behavior.
+		compileExpr := eq.Expr
+		polarityFlipped := false
+		if notExpr, ok := eq.Expr.(ExprNot); ok && !eq.Append {
+			compileExpr = notExpr.X
+			polarityFlipped = true
+		}
+
+		chosenTerms, err := exprToTerms(compileExpr, c.Fields, aliases)
+		if err != nil {
+			return nil, fmt.Errorf("line %d: %w", eq.Line, err)
+		}
+
+		finalActiveLow := activeLow
+		if polarityFlipped {
+			finalActiveLow = !finalActiveLow
+		}
+
+		compiled = append(compiled, compiledEq{eq: eq, terms: chosenTerms, activeLow: finalActiveLow, outputName: lhs})
 		// Mark feedback use based on actual terms (post range expansion).
-		for _, term := range terms {
+		for _, term := range chosenTerms {
 			for _, lit := range term.Lits {
 				if sym, ok := symbols[lit.Name]; ok {
 					if olmc, ok := chip.PinToOLMC(sym.Pin); ok {
@@ -59,9 +107,18 @@ func Compile(c Content) (*gal.GAL, error) {
 		}
 	}
 
+	// Accumulate all terms per output (including APPEND), then minimize and place.
+	type olmcAccum struct {
+		terms     []Term
+		activeLow bool
+		line      int
+		lhs       string
+	}
+	accum := make(map[int]*olmcAccum) // keyed by OLMC index
+
 	for _, item := range compiled {
 		eq := item.eq
-		lhs := strings.TrimSpace(eq.LHS)
+		lhs := item.outputName
 		sym, ok := symbols[lhs]
 		if !ok {
 			return nil, fmt.Errorf("line %d: unknown output %q", eq.Line, lhs)
@@ -70,25 +127,160 @@ func Compile(c Content) (*gal.GAL, error) {
 		if !ok {
 			return nil, fmt.Errorf("line %d: %q is not a valid output pin", eq.Line, lhs)
 		}
-		if bp.OLMC[olmc].Output != nil {
-			return nil, fmt.Errorf("line %d: output %q already defined", eq.Line, lhs)
-		}
 
-		galTerms, err := mapTermsToPins(item.terms, symbols)
+		if a, exists := accum[olmc]; exists {
+			if !eq.Append {
+				return nil, fmt.Errorf("line %d: output %q already defined", eq.Line, lhs)
+			}
+			a.terms = append(a.terms, item.terms...)
+		} else {
+			accum[olmc] = &olmcAccum{
+				terms:     item.terms,
+				activeLow: item.activeLow || sym.ActiveLow,
+				line:      eq.Line,
+				lhs:       lhs,
+			}
+		}
+	}
+
+	for olmc, a := range accum {
+		// Minimize the accumulated terms for this output
+		a.terms = minimizeTerms(a.terms)
+
+		galTerms, err := mapTermsToPins(a.terms, symbols)
 		if err != nil {
-			return nil, fmt.Errorf("line %d: %w", eq.Line, err)
+			return nil, fmt.Errorf("line %d: %w", a.line, err)
 		}
 
-		term := gal.Term{Line: eq.Line, Pins: galTerms}
+		term := gal.Term{Line: a.line, Pins: galTerms}
 		bp.OLMC[olmc].Output = &term
-		if sym.ActiveLow {
+		if a.activeLow {
 			bp.OLMC[olmc].Active = gal.ActiveLow
 		} else {
 			bp.OLMC[olmc].Active = gal.ActiveHigh
 		}
 	}
 
+	// For GAL16V8 simple mode: unused OLMCs should be configured as inputs (AC1=1)
+	if chip == gal.ChipGAL16V8 {
+		for i := range bp.OLMC {
+			if bp.OLMC[i].Output == nil && !bp.OLMC[i].Feedback {
+				bp.OLMC[i].Feedback = true
+			}
+		}
+	}
+
 	return gal.BuildGAL(bp)
+}
+
+// desugarSetOps expands field-name LHS equations into per-bit equations.
+func desugarSetOps(c Content) []Equation {
+	var out []Equation
+	for _, eq := range c.Equations {
+		lhs := strings.TrimSpace(eq.LHS)
+		// Strip ! prefix for lookup
+		lhsClean := lhs
+		if strings.HasPrefix(lhsClean, "!") {
+			lhsClean = strings.TrimSpace(lhsClean[1:])
+		}
+		field, ok := c.Fields[lhsClean]
+		if !ok {
+			out = append(out, eq)
+			continue
+		}
+		// LHS is a field name — expand to per-bit equations
+		expanded := expandFieldExpr(eq.Expr, field, c.Fields, eq.Line, eq.Append, lhs)
+		out = append(out, expanded...)
+	}
+	return out
+}
+
+func expandFieldExpr(expr Expr, outField Field, fields map[string]Field, line int, isAppend bool, lhs string) []Equation {
+	width := len(outField.Bits)
+	bitExprs := exprToBitExprs(expr, width, fields)
+	var out []Equation
+	for i, be := range bitExprs {
+		out = append(out, Equation{
+			Line:   line,
+			LHS:    outField.Bits[i].Name,
+			Expr:   be,
+			Append: isAppend,
+		})
+	}
+	return out
+}
+
+// exprToBitExprs breaks an expression into per-bit expressions for a field of given width.
+func exprToBitExprs(expr Expr, width int, fields map[string]Field) []Expr {
+	switch e := expr.(type) {
+	case ExprAnd:
+		leftBits := exprToBitExprs(e.A, width, fields)
+		rightBits := exprToBitExprs(e.B, width, fields)
+		out := make([]Expr, width)
+		for i := 0; i < width; i++ {
+			out[i] = ExprAnd{A: leftBits[i], B: rightBits[i]}
+		}
+		return out
+	case ExprOr:
+		leftBits := exprToBitExprs(e.A, width, fields)
+		rightBits := exprToBitExprs(e.B, width, fields)
+		out := make([]Expr, width)
+		for i := 0; i < width; i++ {
+			out[i] = ExprOr{A: leftBits[i], B: rightBits[i]}
+		}
+		return out
+	case ExprXor:
+		leftBits := exprToBitExprs(e.A, width, fields)
+		rightBits := exprToBitExprs(e.B, width, fields)
+		out := make([]Expr, width)
+		for i := 0; i < width; i++ {
+			out[i] = ExprXor{A: leftBits[i], B: rightBits[i]}
+		}
+		return out
+	case ExprNot:
+		innerBits := exprToBitExprs(e.X, width, fields)
+		out := make([]Expr, width)
+		for i := 0; i < width; i++ {
+			out[i] = ExprNot{X: innerBits[i]}
+		}
+		return out
+	case ExprIdent:
+		// Check if this ident is a field name
+		if f, ok := fields[e.Name]; ok && len(f.Bits) == width {
+			out := make([]Expr, width)
+			for i, b := range f.Bits {
+				out[i] = ExprIdent{Name: b.Name}
+			}
+			return out
+		}
+		// Scalar: broadcast to all bits
+		out := make([]Expr, width)
+		for i := 0; i < width; i++ {
+			out[i] = e
+		}
+		return out
+	case ExprIdentList:
+		if len(e.Names) == width {
+			out := make([]Expr, width)
+			for i, name := range e.Names {
+				out[i] = ExprIdent{Name: name}
+			}
+			return out
+		}
+		// Width mismatch: broadcast whole expression
+		out := make([]Expr, width)
+		for i := 0; i < width; i++ {
+			out[i] = expr
+		}
+		return out
+	default:
+		// Scalar expression: broadcast
+		out := make([]Expr, width)
+		for i := 0; i < width; i++ {
+			out[i] = expr
+		}
+		return out
+	}
 }
 
 // exprToLiterals returns all literals (variable names) referenced by expr.
@@ -118,7 +310,27 @@ func exprToLiterals(expr Expr, fields map[string]Field) ([]Literal, error) {
 			return nil, err
 		}
 		return append(l1, l2...), nil
+	case ExprXor:
+		l1, err := exprToLiterals(e.A, fields)
+		if err != nil {
+			return nil, err
+		}
+		l2, err := exprToLiterals(e.B, fields)
+		if err != nil {
+			return nil, err
+		}
+		return append(l1, l2...), nil
 	case ExprFieldRange:
+		f, ok := fields[e.Field]
+		if !ok {
+			return nil, fmt.Errorf("unknown field %q", e.Field)
+		}
+		out := make([]Literal, 0, len(f.Bits))
+		for _, b := range f.Bits {
+			out = append(out, Literal{Name: b.Name})
+		}
+		return out, nil
+	case ExprFieldEquality:
 		f, ok := fields[e.Field]
 		if !ok {
 			return nil, fmt.Errorf("unknown field %q", e.Field)
@@ -146,43 +358,136 @@ type Term struct {
 	Lits []Literal
 }
 
-func exprToTerms(expr Expr, fields map[string]Field) ([]Term, error) {
-	nnf := toNNF(expr, false)
-	return dnf(nnf, fields)
+func exprToTerms(expr Expr, fields map[string]Field, aliases map[string]Expr) ([]Term, error) {
+	nnf, err := toNNF(expr, false, aliases, make(map[string]bool))
+	if err != nil {
+		return nil, err
+	}
+	terms, err := dnf(nnf, fields)
+	if err != nil {
+		return nil, err
+	}
+	return terms, nil
 }
 
-func toNNF(expr Expr, neg bool) Expr {
+func toNNF(expr Expr, neg bool, aliases map[string]Expr, visiting map[string]bool) (Expr, error) {
 	switch e := expr.(type) {
 	case ExprConst:
 		if neg {
-			return ExprConst{Value: !e.Value}
+			return ExprConst{Value: !e.Value}, nil
 		}
-		return e
+		return e, nil
 	case ExprIdent:
-		if neg {
-			return ExprNot{X: e}
+		if alias, ok := aliases[e.Name]; ok {
+			if visiting[e.Name] {
+				return nil, fmt.Errorf("cyclic alias %q", e.Name)
+			}
+			visiting[e.Name] = true
+			out, err := toNNF(alias, neg, aliases, visiting)
+			delete(visiting, e.Name)
+			return out, err
 		}
-		return e
+		if neg {
+			return ExprNot{X: e}, nil
+		}
+		return e, nil
 	case ExprFieldRange:
 		if neg {
-			return ExprNot{X: e}
+			return ExprNot{X: e}, nil
 		}
-		return e
+		return e, nil
+	case ExprFieldEquality:
+		if neg {
+			return ExprNot{X: e}, nil
+		}
+		return e, nil
 	case ExprNot:
-		return toNNF(e.X, !neg)
+		return toNNF(e.X, !neg, aliases, visiting)
 	case ExprAnd:
 		if neg {
-			return ExprOr{A: toNNF(e.A, true), B: toNNF(e.B, true)}
+			left, err := toNNF(e.A, true, aliases, visiting)
+			if err != nil {
+				return nil, err
+			}
+			right, err := toNNF(e.B, true, aliases, visiting)
+			if err != nil {
+				return nil, err
+			}
+			return ExprOr{A: left, B: right}, nil
 		}
-		return ExprAnd{A: toNNF(e.A, false), B: toNNF(e.B, false)}
+		left, err := toNNF(e.A, false, aliases, visiting)
+		if err != nil {
+			return nil, err
+		}
+		right, err := toNNF(e.B, false, aliases, visiting)
+		if err != nil {
+			return nil, err
+		}
+		return ExprAnd{A: left, B: right}, nil
 	case ExprOr:
 		if neg {
-			return ExprAnd{A: toNNF(e.A, true), B: toNNF(e.B, true)}
+			left, err := toNNF(e.A, true, aliases, visiting)
+			if err != nil {
+				return nil, err
+			}
+			right, err := toNNF(e.B, true, aliases, visiting)
+			if err != nil {
+				return nil, err
+			}
+			return ExprAnd{A: left, B: right}, nil
 		}
-		return ExprOr{A: toNNF(e.A, false), B: toNNF(e.B, false)}
+		left, err := toNNF(e.A, false, aliases, visiting)
+		if err != nil {
+			return nil, err
+		}
+		right, err := toNNF(e.B, false, aliases, visiting)
+		if err != nil {
+			return nil, err
+		}
+		return ExprOr{A: left, B: right}, nil
+	case ExprXor:
+		// XOR(a,b) = OR(AND(a, NOT(b)), AND(NOT(a), b))
+		// XNOR(a,b) = OR(AND(a, b), AND(NOT(a), NOT(b)))
+		if neg {
+			// XNOR
+			left, err := toNNF(ExprAnd{A: e.A, B: e.B}, false, aliases, visiting)
+			if err != nil {
+				return nil, err
+			}
+			right, err := toNNF(ExprAnd{A: ExprNot{X: e.A}, B: ExprNot{X: e.B}}, false, aliases, visiting)
+			if err != nil {
+				return nil, err
+			}
+			return ExprOr{A: left, B: right}, nil
+		}
+		left, err := toNNF(ExprAnd{A: e.A, B: ExprNot{X: e.B}}, false, aliases, visiting)
+		if err != nil {
+			return nil, err
+		}
+		right, err := toNNF(ExprAnd{A: ExprNot{X: e.A}, B: e.B}, false, aliases, visiting)
+		if err != nil {
+			return nil, err
+		}
+		return ExprOr{A: left, B: right}, nil
 	default:
-		return expr
+		return expr, nil
 	}
+}
+
+func parseEquationLHS(lhs string) (string, bool, error) {
+	lhs = strings.TrimSpace(lhs)
+	if lhs == "" {
+		return "", false, fmt.Errorf("invalid equation LHS")
+	}
+	activeLow := false
+	if strings.HasPrefix(lhs, "!") {
+		activeLow = true
+		lhs = strings.TrimSpace(strings.TrimPrefix(lhs, "!"))
+	}
+	if lhs == "" {
+		return "", false, fmt.Errorf("invalid equation LHS")
+	}
+	return lhs, activeLow, nil
 }
 
 func dnf(expr Expr, fields map[string]Field) ([]Term, error) {
@@ -200,11 +505,15 @@ func dnf(expr Expr, fields map[string]Field) ([]Term, error) {
 			return []Term{{Lits: []Literal{{Name: inner.Name, Neg: true}}}}, nil
 		case ExprFieldRange:
 			return fieldRangeTerms(inner, fields, true)
+		case ExprFieldEquality:
+			return fieldEqualityTermsNeg(inner, fields)
 		default:
-			return nil, fmt.Errorf("unsupported negation")
+			return nil, fmt.Errorf("unsupported negation of %T", inner)
 		}
 	case ExprFieldRange:
 		return fieldRangeTerms(e, fields, false)
+	case ExprFieldEquality:
+		return fieldEqualityTerms(e, fields)
 	case ExprAnd:
 		left, err := dnf(e.A, fields)
 		if err != nil {
@@ -226,8 +535,62 @@ func dnf(expr Expr, fields map[string]Field) ([]Term, error) {
 		}
 		return append(left, right...), nil
 	default:
-		return nil, fmt.Errorf("unsupported expression")
+		return nil, fmt.Errorf("unsupported expression %T", expr)
 	}
+}
+
+func fieldEqualityTerms(fe ExprFieldEquality, fields map[string]Field) ([]Term, error) {
+	field, ok := fields[fe.Field]
+	if !ok {
+		return nil, fmt.Errorf("unknown field %q", fe.Field)
+	}
+	width := len(field.Bits)
+	if width == 0 {
+		return nil, fmt.Errorf("field %q has no bits", fe.Field)
+	}
+
+	// Project value and mask through the field's bit mapping
+	projValue := projectValue(field, fe.Value)
+	projMask := projectValue(field, fe.Mask)
+
+	// Build a single AND term: for each care-bit, the field bit must match the value bit
+	var lits []Literal
+	for i := 0; i < width; i++ {
+		bitPos := width - 1 - i // MSB first
+		if (projMask>>bitPos)&1 == 0 {
+			continue // don't-care bit
+		}
+		neg := (projValue>>bitPos)&1 == 0
+		lits = append(lits, Literal{Name: field.Bits[i].Name, Neg: neg})
+	}
+	return []Term{{Lits: lits}}, nil
+}
+
+func fieldEqualityTermsNeg(fe ExprFieldEquality, fields map[string]Field) ([]Term, error) {
+	field, ok := fields[fe.Field]
+	if !ok {
+		return nil, fmt.Errorf("unknown field %q", fe.Field)
+	}
+	width := len(field.Bits)
+	if width == 0 {
+		return nil, fmt.Errorf("field %q has no bits", fe.Field)
+	}
+
+	projValue := projectValue(field, fe.Value)
+	projMask := projectValue(field, fe.Mask)
+
+	// Negation of AND(lits) = OR of negated literals (one term per care-bit, each with that bit flipped)
+	var terms []Term
+	for i := 0; i < width; i++ {
+		bitPos := width - 1 - i
+		if (projMask>>bitPos)&1 == 0 {
+			continue
+		}
+		// Flip this bit
+		neg := (projValue>>bitPos)&1 == 1
+		terms = append(terms, Term{Lits: []Literal{{Name: field.Bits[i].Name, Neg: neg}}})
+	}
+	return terms, nil
 }
 
 func andDNF(a, b []Term) []Term {
@@ -235,8 +598,8 @@ func andDNF(a, b []Term) []Term {
 		return nil
 	}
 	var out []Term
-	for _, ta := range a {
-		for _, tb := range b {
+	for _, tb := range b {
+		for _, ta := range a {
 			if t, ok := mergeTerms(ta, tb); ok {
 				out = append(out, t)
 			}

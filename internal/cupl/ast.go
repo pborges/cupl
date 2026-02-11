@@ -25,9 +25,10 @@ type FieldBit struct {
 }
 
 type Equation struct {
-	Line int
-	LHS  string
-	Expr Expr
+	Line   int
+	LHS    string
+	Expr   Expr
+	Append bool
 }
 
 // Expr AST
@@ -50,6 +51,10 @@ type ExprOr struct{ A, B Expr }
 
 func (ExprOr) isExpr() {}
 
+type ExprXor struct{ A, B Expr }
+
+func (ExprXor) isExpr() {}
+
 type ExprConst struct{ Value bool }
 
 func (ExprConst) isExpr() {}
@@ -61,3 +66,19 @@ type ExprFieldRange struct {
 }
 
 func (ExprFieldRange) isExpr() {}
+
+type ExprFieldEquality struct {
+	Field string
+	Value uint64
+	Mask  uint64 // 1=care, 0=don't-care
+}
+
+func (ExprFieldEquality) isExpr() {}
+
+// ExprIdentList represents a bracket set like [A0..3] that expands to multiple idents.
+// Used for set/bus operations.
+type ExprIdentList struct {
+	Names []string
+}
+
+func (ExprIdentList) isExpr() {}

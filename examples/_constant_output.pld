@@ -1,0 +1,29 @@
+Name            _constant_output;
+Partno          TEST014;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8as;
+
+/* Test: Constant 0 and 1 output assignments */
+
+Pin 2 = A;
+Pin 3 = B;
+
+Pin 12 = Y0;
+Pin 13 = Y1;
+Pin 14 = Y2;
+Pin 15 = Y3;
+
+/* permanently low */
+Y0 = 'b'0;
+
+/* permanently high */
+Y1 = 'b'1;
+
+/* normal logic alongside constants */
+Y2 = A & B;
+Y3 = A # B;

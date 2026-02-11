@@ -1,4 +1,4 @@
-Name            MECB_ChipSelect_6502_CPU;
+Name            MECB_56K_RAM_8K_ROM;
 Partno          CA0001;
 Revision        01;
 Date            11/2024;

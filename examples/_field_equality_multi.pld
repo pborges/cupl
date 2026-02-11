@@ -1,0 +1,40 @@
+Name            _field_equality_multi;
+Partno          TEST017;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g22v10;
+
+/* Test: Multiple equality decodes ORed together */
+
+Pin 2  = A0;
+Pin 3  = A1;
+Pin 4  = A2;
+Pin 5  = A3;
+Pin 6  = A4;
+Pin 7  = A5;
+Pin 8  = A6;
+Pin 9  = A7;
+Pin 10 = EN;
+
+Pin 23 = Y0;
+Pin 22 = Y1;
+Pin 21 = Y2;
+Pin 20 = Y3;
+
+FIELD addr = [A7..0];
+
+/* single address decode */
+Y0 = EN & addr:'h'00;
+
+/* OR of multiple specific addresses */
+Y1 = EN & (addr:'h'10 # addr:'h'20 # addr:'h'30);
+
+/* range of addresses plus a specific one */
+Y2 = EN & (addr:[40..4F] # addr:'h'FF);
+
+/* decode with don't care */
+Y3 = EN & addr:'h'8X;
