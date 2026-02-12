@@ -6,7 +6,7 @@ Designer        Test;
 Company         Test;
 Location        None;
 Assembly        None;
-Device          g16v8;
+Device          g16v8ma;
 
 /* Converted from galette GAL16V8_tri.pld */
 
