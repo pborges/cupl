@@ -1,6 +1,9 @@
 package gal
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 // Active indicates output polarity.
 type Active int
@@ -106,6 +109,13 @@ func BuildGAL(bp Blueprint) (*GAL, error) {
 	setTristate(g, bp)
 	setXors(g, bp)
 
+	// Sort product terms to match WinCUPL output ordering:
+	// 1) fewer pins first, 2) ascending by highest fuse column.
+	for i := range bp.OLMC {
+		sortProductTerms(g, bp.OLMC[i].Output)
+		sortProductTerms(g, bp.OLMC[i].OETerm)
+	}
+
 	if bp.Chip == ChipGAL22V10 {
 		if err := setARSP(g, bp); err != nil {
 			return nil, err
@@ -131,33 +141,23 @@ func setSig(gal *GAL, sig []byte) {
 // In complex/registered modes (16V8) and for 22V10, combinatorial outputs
 // are implemented as tristate with OE asserted. Registered outputs get AC1=0.
 func setTristate(g *GAL, bp Blueprint) {
-	comIsTri := false
-	if bp.Chip == ChipGAL22V10 {
-		comIsTri = true
-	} else if bp.Chip == ChipGAL16V8 {
-		// Complex and registered modes use tristate for combinatorial outputs.
-		comIsTri = g.AC0 // AC0=true in both complex and registered modes
-	}
-
-	isSimple := bp.Chip == ChipGAL16V8 && g.Syn && !g.AC0
-
 	olmcs := len(bp.OLMC)
 	for i, olmc := range bp.OLMC {
-		isTri := false
-		if olmc.Output == nil {
-			// In simple mode, unused OLMCs are inputs (AC1=1).
-			// In complex/registered modes, unused OLMCs stay AC1=0.
-			if isSimple {
-				isTri = true
-			} else {
-				isTri = olmc.Feedback
+		ac1 := false
+		if bp.Chip == ChipGAL22V10 {
+			// 22V10: AC1=1 only for combinatorial outputs (not registered, not unused).
+			ac1 = olmc.Output != nil && !olmc.Registered
+		} else if bp.Chip == ChipGAL16V8 {
+			if olmc.Output == nil {
+				// Unused OLMCs: always AC1=1.
+				ac1 = true
+			} else if !olmc.Registered && g.AC0 {
+				// Combinatorial output in complex/registered mode: AC1=1.
+				ac1 = true
 			}
-		} else if olmc.Registered {
-			isTri = false // registered outputs always AC1=0
-		} else {
-			isTri = comIsTri
+			// Registered output or simple mode output: AC1=0.
 		}
-		if isTri {
+		if ac1 {
 			g.AC1[olmcs-1-i] = true
 		}
 	}
@@ -178,18 +178,53 @@ func setPTs(gal *GAL) {
 	}
 }
 
-func setARSP(g *GAL, bp Blueprint) error {
+func setARSP(g *GAL, _ Blueprint) error {
 	// AR is row 0, SP is row 131 on GAL22V10.
+	// WinCUPL clears these rows to FALSE (all 0s).
 	if g.Chip != ChipGAL22V10 {
 		return nil
 	}
-	if err := g.AddTermOpt(bp.AR, Bounds{StartRow: 0, MaxRows: 1, RowOffset: 0}); err != nil {
+	if err := g.AddTermOpt(nil, Bounds{StartRow: 0, MaxRows: 1, RowOffset: 0}); err != nil {
 		return err
 	}
-	if err := g.AddTermOpt(bp.SP, Bounds{StartRow: 131, MaxRows: 1, RowOffset: 0}); err != nil {
+	if err := g.AddTermOpt(nil, Bounds{StartRow: 131, MaxRows: 1, RowOffset: 0}); err != nil {
 		return err
 	}
 	return nil
+}
+
+// sortProductTerms sorts the product terms (rows) in a Term to match
+// WinCUPL's output ordering: fewer pins first, then ascending by the
+// highest fuse column position in the term.
+func sortProductTerms(g *GAL, term *Term) {
+	if term == nil || len(term.Pins) <= 1 {
+		return
+	}
+	sort.SliceStable(term.Pins, func(i, j int) bool {
+		li, lj := len(term.Pins[i]), len(term.Pins[j])
+		if li != lj {
+			return li < lj
+		}
+		return highestCol(g, term.Pins[i]) < highestCol(g, term.Pins[j])
+	})
+}
+
+func highestCol(g *GAL, row []Pin) int {
+	best := -1
+	for _, p := range row {
+		col, err := g.pinToColumn(p.Pin)
+		if err != nil {
+			continue
+		}
+		c := col
+		if p.Neg {
+			c++
+		}
+		if c > best {
+			best = c
+		}
+	}
+	return best
 }
 
 func setCoreEqns(g *GAL, bp Blueprint) error {

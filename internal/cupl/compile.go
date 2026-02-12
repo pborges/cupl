@@ -587,7 +587,13 @@ func parseEquationLHS(lhs string) (LHSInfo, error) {
 	}
 	// Split on "." to extract extension
 	if idx := strings.Index(lhs, "."); idx >= 0 {
-		info.Extension = strings.ToUpper(lhs[idx+1:])
+		ext := strings.ToUpper(lhs[idx+1:])
+		if ext == "OE" {
+			ext = "E" // WinCUPL uses .OE, normalize to .E
+		} else if ext == "D" {
+			ext = "R" // WinCUPL uses .D for registered, normalize to .R
+		}
+		info.Extension = ext
 		lhs = lhs[:idx]
 	}
 	info.Name = lhs

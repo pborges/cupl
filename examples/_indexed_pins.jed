@@ -1,5 +1,5 @@
 
-CUPlang        1.3.0
+CUPlang        1.4.1
 Device          16v8
 Name            _indexed_pins
 Partno          TEST009
@@ -24,4 +24,4 @@ Location        None
 *L02193 0
 *C1b18
 *
-806e
+8070

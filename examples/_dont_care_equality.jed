@@ -1,5 +1,5 @@
 
-CUPlang        1.3.0
+CUPlang        1.4.1
 Device          16v8
 Name            _dont_care_equality
 Partno          TEST008
@@ -23,4 +23,4 @@ Location        None
 *L02193 0
 *C1638
 *
-7b08
+7b0a

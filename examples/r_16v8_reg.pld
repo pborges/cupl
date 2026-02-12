@@ -24,8 +24,8 @@ Pin 14 = O2;
 Pin 15 = O3;
 Pin 16 = O4;
 
-O0.R = I0 & I1;
-O1.R = I2 # I3;
-O2.R = I4 & !I5 # !I4 & I5;
-O3.R = I0 & I1 & I2 & I3 & I4 & I5;
-!O4.R = I0 # I1 # I2 # I3 # I4 # I5;
+O0.D = I0 & I1;
+O1.D = I2 # I3;
+O2.D = I4 & !I5 # !I4 & I5;
+O3.D = I0 & I1 & I2 & I3 & I4 & I5;
+!O4.D = I0 # I1 # I2 # I3 # I4 # I5;

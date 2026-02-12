@@ -1,5 +1,5 @@
 
-CUPlang        1.3.0
+CUPlang        1.4.1
 Device          22v10
 Name            _field_equality_multi
 Partno          TEST017
@@ -26,4 +26,4 @@ Location        None
 *L05828 0101010001000101010100110101010000110000001100010011011100000000
 *C39e5
 *
-b710
+b712

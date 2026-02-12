@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [1.5.0] - 2026-02-11
+### Added
+- All three GAL16V8 operating modes: Simple, Complex, and Registered.
+- GAL22V10 registered output support with per-OLMC mode selection.
+- `.D` extension for registered (clocked D flip-flop) outputs.
+- `.OE` extension for programmable output enable equations.
+- Global `AR` (async reset) and `SP` (sync preset) signals for GAL22V10.
+- Device mnemonic support to force GAL16V8 mode: `g16v8as` (Simple), `g16v8ma` (Complex), `g16v8ms` (Registered).
+- Auto-detection of GAL16V8 mode from equations when no mnemonic is specified.
+- Feedback negation flip (`needs_flip`) for GAL22V10 registered active-high outputs.
+- Product term sorting to match WinCUPL output ordering.
+- Eight new blackbox test cases compiled with WinCUPL covering all modes.
+
+### Changed
+- Regenerated all existing reference JED files to match updated product term ordering.
+- Updated README with device modes, extensions, and global signals documentation.
+
 ## [1.4.1] - 2026-02-10
 ### Removed
 - Removed device name mapping in `burn` command; the JED header device name is now passed directly to minipro.

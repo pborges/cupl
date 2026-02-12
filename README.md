@@ -47,7 +47,7 @@ The GAL16V8 supports three operating modes, auto-detected from equations:
 |------|-----|-----|-------------|
 | Simple | 1 | 0 | Pure combinatorial. Pin 1 and 11 are inputs. All 8 product terms available per output. |
 | Complex | 1 | 1 | Combinatorial with programmable output enable. Row 0 of each OLMC is the OE equation. Pins 15/16 can be used as inputs. |
-| Registered | 0 | 1 | Clocked registers. Pin 1 is clock, pin 11 is global /OE. Use `.R` extension on outputs. |
+| Registered | 0 | 1 | Clocked registers. Pin 1 is clock, pin 11 is global /OE. Use `.D` extension on outputs. |
 
 Mode is auto-detected but can be forced with device mnemonics:
 
@@ -63,9 +63,8 @@ Each OLMC is independently combinatorial or registered. Row 0 of each OLMC is al
 
 | Extension | Meaning |
 |-----------|---------|
-| `.R` | Registered output (clocked D flip-flop) |
-| `.T` | Tristate data output |
-| `.E` | Output enable equation |
+| `.D` | Registered output (clocked D flip-flop) |
+| `.OE` | Output enable equation |
 
 ### Global Signals (GAL22V10)
 
@@ -76,14 +75,14 @@ Each OLMC is independently combinatorial or registered. Row 0 of each OLMC is al
 
 ```
 /* Registered output */
-Q0.R = D0 & EN;
+Q0.D = D0 & EN;
 
-/* Combinatorial with tristate */
-O0.T = I0 & I1;
-O0.E = EN;
+/* Combinatorial with output enable */
+O0 = I0 & I1;
+O0.OE = EN;
 
 /* Inverted registered output */
-!Q1.R = A & B;
+!Q1.D = A & B;
 
 /* Global async reset and sync preset */
 AR = RESET;

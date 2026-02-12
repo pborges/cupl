@@ -1,5 +1,5 @@
 
-CUPlang        1.3.0
+CUPlang        1.4.1
 Device          16v8
 Name            _intermediate_vars
 Partno          TEST010
@@ -24,4 +24,4 @@ Location        None
 *L02193 0
 *C1aa6
 *
-82ba
+82bc
