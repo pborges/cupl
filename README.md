@@ -31,9 +31,64 @@ Working MVP:
 - WinCUPL-style `.pld` input to JEDEC `.jed` output
 - Deterministic JEDEC generation with checksums
 - Device support: `g16v8`, `g22v10`
+- All three GAL16V8 modes: Simple, Complex, and Registered
+- GAL22V10 registered outputs with global AR/SP
 - Batch-friendly CLI (`build`, `burn`, `devices`, `version`, `-v`)
 - Blackbox tested against real-world PLD/JED samples
 - Small, dependency-light Go codebase
+
+## Device Modes
+
+### GAL16V8
+
+The GAL16V8 supports three operating modes, auto-detected from equations:
+
+| Mode | SYN | AC0 | Description |
+|------|-----|-----|-------------|
+| Simple | 1 | 0 | Pure combinatorial. Pin 1 and 11 are inputs. All 8 product terms available per output. |
+| Complex | 1 | 1 | Combinatorial with programmable output enable. Row 0 of each OLMC is the OE equation. Pins 15/16 can be used as inputs. |
+| Registered | 0 | 1 | Clocked registers. Pin 1 is clock, pin 11 is global /OE. Use `.R` extension on outputs. |
+
+Mode is auto-detected but can be forced with device mnemonics:
+
+- `g16v8as` — force Simple mode
+- `g16v8ma` — force Complex mode
+- `g16v8ms` — force Registered mode
+
+### GAL22V10
+
+Each OLMC is independently combinatorial or registered. Row 0 of each OLMC is always the tristate/OE term. Pin 1 is clock for registered outputs.
+
+### Extensions
+
+| Extension | Meaning |
+|-----------|---------|
+| `.R` | Registered output (clocked D flip-flop) |
+| `.T` | Tristate data output |
+| `.E` | Output enable equation |
+
+### Global Signals (GAL22V10)
+
+- `AR` — Asynchronous Reset (all registered outputs)
+- `SP` — Synchronous Preset (all registered outputs)
+
+### Examples
+
+```
+/* Registered output */
+Q0.R = D0 & EN;
+
+/* Combinatorial with tristate */
+O0.T = I0 & I1;
+O0.E = EN;
+
+/* Inverted registered output */
+!Q1.R = A & B;
+
+/* Global async reset and sync preset */
+AR = RESET;
+SP = PRESET;
+```
 
 ## Non-goals (initially)
 

@@ -20,6 +20,7 @@ func Compile(c Content) (*gal.GAL, error) {
 		return nil, err
 	}
 	bp := gal.NewBlueprint(chip)
+	bp.ModeHint = gal.ParseModeHint(c.Device)
 	if partno := strings.TrimSpace(c.Meta["Partno"]); partno != "" {
 		bp.Sig = []byte(partno)
 	}
@@ -41,18 +42,21 @@ func Compile(c Content) (*gal.GAL, error) {
 
 	aliases := make(map[string]Expr)
 	for _, eq := range c.Equations {
-		lhs, activeLow, err := parseEquationLHS(eq.LHS)
+		info, err := parseEquationLHS(eq.LHS)
 		if err != nil {
 			return nil, fmt.Errorf("line %d: %w", eq.Line, err)
 		}
-		if activeLow {
-			if _, ok := symbols[lhs]; !ok {
-				return nil, fmt.Errorf("line %d: active-low output %q is not a defined pin", eq.Line, lhs)
+		if info.ActiveLow {
+			if _, ok := symbols[info.Name]; !ok {
+				// Allow active-low on AR/SP (they're not pins)
+				if !isGlobalSignal(info.Name) {
+					return nil, fmt.Errorf("line %d: active-low output %q is not a defined pin", eq.Line, info.Name)
+				}
 			}
 		}
-		if _, ok := symbols[lhs]; !ok {
-			if !eq.Append {
-				aliases[lhs] = eq.Expr
+		if _, ok := symbols[info.Name]; !ok {
+			if !eq.Append && !isGlobalSignal(info.Name) && info.Extension == "" {
+				aliases[info.Name] = eq.Expr
 			}
 		}
 	}
@@ -62,14 +66,36 @@ func Compile(c Content) (*gal.GAL, error) {
 		terms      []Term
 		activeLow  bool
 		outputName string
+		extension  string
 	}
 	compiled := make([]compiledEq, 0, len(c.Equations))
 	for _, eq := range c.Equations {
-		lhs, activeLow, err := parseEquationLHS(eq.LHS)
+		info, err := parseEquationLHS(eq.LHS)
 		if err != nil {
 			return nil, fmt.Errorf("line %d: %w", eq.Line, err)
 		}
-		if _, ok := symbols[lhs]; !ok {
+
+		// Handle global AR/SP signals
+		if isGlobalSignal(info.Name) {
+			chosenTerms, err := exprToTerms(eq.Expr, c.Fields, aliases)
+			if err != nil {
+				return nil, fmt.Errorf("line %d: %w", eq.Line, err)
+			}
+			galTerms, err := mapTermsToPins(chosenTerms, symbols)
+			if err != nil {
+				return nil, fmt.Errorf("line %d: %w", eq.Line, err)
+			}
+			term := gal.Term{Line: eq.Line, Pins: galTerms}
+			switch strings.ToUpper(info.Name) {
+			case "AR":
+				bp.AR = &term
+			case "SP":
+				bp.SP = &term
+			}
+			continue
+		}
+
+		if _, ok := symbols[info.Name]; !ok {
 			// Non-output equation: treat as alias for expressions.
 			continue
 		}
@@ -79,7 +105,7 @@ func Compile(c Content) (*gal.GAL, error) {
 		// This matches WinCUPL's behavior.
 		compileExpr := eq.Expr
 		polarityFlipped := false
-		if notExpr, ok := eq.Expr.(ExprNot); ok && !eq.Append {
+		if notExpr, ok := eq.Expr.(ExprNot); ok && !eq.Append && info.Extension != "E" && info.Extension != "R" {
 			compileExpr = notExpr.X
 			polarityFlipped = true
 		}
@@ -89,12 +115,12 @@ func Compile(c Content) (*gal.GAL, error) {
 			return nil, fmt.Errorf("line %d: %w", eq.Line, err)
 		}
 
-		finalActiveLow := activeLow
+		finalActiveLow := info.ActiveLow
 		if polarityFlipped {
 			finalActiveLow = !finalActiveLow
 		}
 
-		compiled = append(compiled, compiledEq{eq: eq, terms: chosenTerms, activeLow: finalActiveLow, outputName: lhs})
+		compiled = append(compiled, compiledEq{eq: eq, terms: chosenTerms, activeLow: finalActiveLow, outputName: info.Name, extension: info.Extension})
 		// Mark feedback use based on actual terms (post range expansion).
 		for _, term := range chosenTerms {
 			for _, lit := range term.Lits {
@@ -113,8 +139,10 @@ func Compile(c Content) (*gal.GAL, error) {
 		activeLow bool
 		line      int
 		lhs       string
+		extension string
 	}
 	accum := make(map[int]*olmcAccum) // keyed by OLMC index
+	oeAccum := make(map[int]*olmcAccum)
 
 	for _, item := range compiled {
 		eq := item.eq
@@ -128,6 +156,19 @@ func Compile(c Content) (*gal.GAL, error) {
 			return nil, fmt.Errorf("line %d: %q is not a valid output pin", eq.Line, lhs)
 		}
 
+		if item.extension == "E" {
+			// Output enable equation — store separately
+			if _, exists := oeAccum[olmc]; exists {
+				return nil, fmt.Errorf("line %d: OE for %q already defined", eq.Line, lhs)
+			}
+			oeAccum[olmc] = &olmcAccum{
+				terms: item.terms,
+				line:  eq.Line,
+				lhs:   lhs,
+			}
+			continue
+		}
+
 		if a, exists := accum[olmc]; exists {
 			if !eq.Append {
 				return nil, fmt.Errorf("line %d: output %q already defined", eq.Line, lhs)
@@ -139,6 +180,7 @@ func Compile(c Content) (*gal.GAL, error) {
 				activeLow: item.activeLow || sym.ActiveLow,
 				line:      eq.Line,
 				lhs:       lhs,
+				extension: item.extension,
 			}
 		}
 	}
@@ -159,18 +201,68 @@ func Compile(c Content) (*gal.GAL, error) {
 		} else {
 			bp.OLMC[olmc].Active = gal.ActiveHigh
 		}
+
+		switch a.extension {
+		case "R":
+			bp.OLMC[olmc].Registered = true
+		case "T":
+			// Tristate data — implies OE term needed
+		}
 	}
 
-	// For GAL16V8 simple mode: unused OLMCs should be configured as inputs (AC1=1)
-	if chip == gal.ChipGAL16V8 {
-		for i := range bp.OLMC {
-			if bp.OLMC[i].Output == nil && !bp.OLMC[i].Feedback {
-				bp.OLMC[i].Feedback = true
+	// Place OE terms
+	for olmc, oe := range oeAccum {
+		oe.terms = minimizeTerms(oe.terms)
+		galTerms, err := mapTermsToPins(oe.terms, symbols)
+		if err != nil {
+			return nil, fmt.Errorf("line %d: %w", oe.line, err)
+		}
+		term := gal.Term{Line: oe.line, Pins: galTerms}
+		bp.OLMC[olmc].OETerm = &term
+	}
+
+	// Note: AC1 handling for unused OLMCs is done in setTristate based on mode.
+
+	// needs_flip: On GAL22V10, registered + active-high outputs have their
+	// feedback taken from the register (pre-XOR gate). Since XOR=1 inverts
+	// the output, the feedback value is the complement of the pin value.
+	// To compensate, flip the negation for any AND array reference to such pins.
+	if chip == gal.ChipGAL22V10 {
+		flipPins := make(map[int]bool)
+		for i, olmc := range bp.OLMC {
+			if olmc.Registered && olmc.Active == gal.ActiveHigh {
+				flipPins[chip.MinOLMCPin()+i] = true
 			}
+		}
+		if len(flipPins) > 0 {
+			flipTermPins := func(t *gal.Term) {
+				if t == nil {
+					return
+				}
+				for ri, row := range t.Pins {
+					for ci, p := range row {
+						if flipPins[p.Pin] {
+							t.Pins[ri][ci].Neg = !p.Neg
+						}
+					}
+				}
+			}
+			for i := range bp.OLMC {
+				flipTermPins(bp.OLMC[i].Output)
+				flipTermPins(bp.OLMC[i].OETerm)
+			}
+			flipTermPins(bp.AR)
+			flipTermPins(bp.SP)
 		}
 	}
 
 	return gal.BuildGAL(bp)
+}
+
+// isGlobalSignal returns true for AR and SP (global signals, not pins).
+func isGlobalSignal(name string) bool {
+	n := strings.ToUpper(name)
+	return n == "AR" || n == "SP"
 }
 
 // desugarSetOps expands field-name LHS equations into per-bit equations.
@@ -474,20 +566,32 @@ func toNNF(expr Expr, neg bool, aliases map[string]Expr, visiting map[string]boo
 	}
 }
 
-func parseEquationLHS(lhs string) (string, bool, error) {
+type LHSInfo struct {
+	Name      string
+	ActiveLow bool
+	Extension string // "", "R", "T", "E"
+}
+
+func parseEquationLHS(lhs string) (LHSInfo, error) {
 	lhs = strings.TrimSpace(lhs)
 	if lhs == "" {
-		return "", false, fmt.Errorf("invalid equation LHS")
+		return LHSInfo{}, fmt.Errorf("invalid equation LHS")
 	}
-	activeLow := false
+	info := LHSInfo{}
 	if strings.HasPrefix(lhs, "!") {
-		activeLow = true
-		lhs = strings.TrimSpace(strings.TrimPrefix(lhs, "!"))
+		info.ActiveLow = true
+		lhs = strings.TrimSpace(lhs[1:])
 	}
 	if lhs == "" {
-		return "", false, fmt.Errorf("invalid equation LHS")
+		return LHSInfo{}, fmt.Errorf("invalid equation LHS")
 	}
-	return lhs, activeLow, nil
+	// Split on "." to extract extension
+	if idx := strings.Index(lhs, "."); idx >= 0 {
+		info.Extension = strings.ToUpper(lhs[idx+1:])
+		lhs = lhs[:idx]
+	}
+	info.Name = lhs
+	return info, nil
 }
 
 func dnf(expr Expr, fields map[string]Field) ([]Term, error) {

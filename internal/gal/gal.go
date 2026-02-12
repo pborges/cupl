@@ -45,10 +45,19 @@ func NewGAL(chip Chip) *GAL {
 	return g
 }
 
-// Only simple mode for GAL16V8.
 func (g *GAL) SetSimpleMode() {
 	g.Syn = true
 	g.AC0 = false
+}
+
+func (g *GAL) SetComplexMode() {
+	g.Syn = true
+	g.AC0 = true
+}
+
+func (g *GAL) SetRegisteredMode() {
+	g.Syn = false
+	g.AC0 = true
 }
 
 func (g *GAL) AddTerm(term Term, bounds Bounds) error {
@@ -106,12 +115,17 @@ func (g *GAL) setAnd(row int, pin int, neg bool) error {
 	return nil
 }
 
-// Only for GAL16V8 simple mode and GAL22V10.
 func (g *GAL) pinToColumn(pin int) (int, error) {
 	if pin < 1 || pin > g.Chip.NumPins() {
 		return 0, fmt.Errorf("invalid pin %d", pin)
 	}
 	if g.Chip == ChipGAL16V8 {
+		if !g.Syn && g.AC0 {
+			return pinToCol16Registered(pin)
+		}
+		if g.Syn && g.AC0 {
+			return pinToCol16Complex(pin)
+		}
 		return pinToCol16Simple(pin)
 	}
 	if g.Chip == ChipGAL22V10 {
@@ -162,6 +176,100 @@ func pinToCol16Simple(pin int) (int, error) {
 		return 10, nil
 	case 19:
 		return 6, nil
+	case 20:
+		return 0, fmt.Errorf("pin %d is power", pin)
+	default:
+		return 0, fmt.Errorf("invalid pin %d", pin)
+	}
+}
+
+func pinToCol16Registered(pin int) (int, error) {
+	switch pin {
+	case 1:
+		return 0, fmt.Errorf("pin 1 is clock in registered mode")
+	case 2:
+		return 0, nil
+	case 3:
+		return 4, nil
+	case 4:
+		return 8, nil
+	case 5:
+		return 12, nil
+	case 6:
+		return 16, nil
+	case 7:
+		return 20, nil
+	case 8:
+		return 24, nil
+	case 9:
+		return 28, nil
+	case 10:
+		return 0, fmt.Errorf("pin %d is power", pin)
+	case 11:
+		return 0, fmt.Errorf("pin 11 is /OE in registered mode")
+	case 12:
+		return 30, nil
+	case 13:
+		return 26, nil
+	case 14:
+		return 22, nil
+	case 15:
+		return 18, nil
+	case 16:
+		return 14, nil
+	case 17:
+		return 10, nil
+	case 18:
+		return 6, nil
+	case 19:
+		return 2, nil
+	case 20:
+		return 0, fmt.Errorf("pin %d is power", pin)
+	default:
+		return 0, fmt.Errorf("invalid pin %d", pin)
+	}
+}
+
+func pinToCol16Complex(pin int) (int, error) {
+	switch pin {
+	case 1:
+		return 2, nil
+	case 2:
+		return 0, nil
+	case 3:
+		return 4, nil
+	case 4:
+		return 8, nil
+	case 5:
+		return 12, nil
+	case 6:
+		return 16, nil
+	case 7:
+		return 20, nil
+	case 8:
+		return 24, nil
+	case 9:
+		return 28, nil
+	case 10:
+		return 0, fmt.Errorf("pin %d is power", pin)
+	case 11:
+		return 30, nil
+	case 12:
+		return 0, fmt.Errorf("pin 12 is not an input in complex mode")
+	case 13:
+		return 26, nil
+	case 14:
+		return 22, nil
+	case 15:
+		return 18, nil
+	case 16:
+		return 14, nil
+	case 17:
+		return 10, nil
+	case 18:
+		return 6, nil
+	case 19:
+		return 0, fmt.Errorf("pin 19 is not an input in complex mode")
 	case 20:
 		return 0, fmt.Errorf("pin %d is power", pin)
 	default:

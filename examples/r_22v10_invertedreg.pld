@@ -1,0 +1,33 @@
+Name            r_22v10_invertedreg;
+Partno          InvReg;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g22v10;
+
+/* Converted from galette GAL22V10_invertedreg.pld */
+
+Pin 1  = CLK;
+Pin 2  = A;
+Pin 3  = B;
+Pin 13 = !CS;
+Pin 14 = Q1;
+Pin 15 = Q2;
+Pin 16 = Q3;
+Pin 17 = Q4;
+Pin 18 = Q5;
+Pin 19 = Q6;
+Pin 20 = Q7;
+Pin 21 = Q8;
+
+!Q2.R = A & B;
+!Q1.R = !Q2;
+!Q4.R = A & B;
+!Q3.R = Q4;
+Q6.R = A & B;
+!Q5.R = !Q6;
+Q8.R = A & B;
+!Q7.R = Q8;

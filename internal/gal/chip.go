@@ -61,6 +61,23 @@ func ParseChip(name string) (Chip, error) {
 	}
 }
 
+// ParseModeHint extracts a mode hint from device mnemonics like g16v8as, g16v8ma, g16v8ms.
+func ParseModeHint(name string) Mode {
+	n := strings.ToUpper(strings.TrimSpace(name))
+	if strings.Contains(n, "16V8") {
+		suffix := n[strings.Index(n, "16V8")+4:]
+		switch suffix {
+		case "AS":
+			return ModeSimple
+		case "MA":
+			return ModeComplex
+		case "MS":
+			return ModeRegistered
+		}
+	}
+	return ModeAuto
+}
+
 func normalizeDevice(name string) string {
 	// Accept CUPL-style names like g16v8as, g22v10.
 	// Normalize to GALxxVx for internal use.

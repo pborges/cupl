@@ -1,0 +1,31 @@
+Name            r_16v8_reg;
+Partno          CombTest;
+Revision        01;
+Date            02/2026;
+Designer        Test;
+Company         Test;
+Location        None;
+Assembly        None;
+Device          g16v8;
+
+/* Converted from galette GAL16V8_reg.pld */
+
+Pin 1  = Clock;
+Pin 2  = I0;
+Pin 3  = I1;
+Pin 4  = I2;
+Pin 5  = I3;
+Pin 6  = I4;
+Pin 7  = I5;
+Pin 11 = !OE;
+Pin 12 = O0;
+Pin 13 = O1;
+Pin 14 = O2;
+Pin 15 = O3;
+Pin 16 = O4;
+
+O0.R = I0 & I1;
+O1.R = I2 # I3;
+O2.R = I4 & !I5 # !I4 & I5;
+O3.R = I0 & I1 & I2 & I3 & I4 & I5;
+!O4.R = I0 # I1 # I2 # I3 # I4 # I5;
